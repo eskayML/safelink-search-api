@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "safelink-search-api"
+version = "0.1.0"
+description = "Keyword based search based on text and images of consumer products"
+authors = ["Samuel Kalu <kalusam619@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
