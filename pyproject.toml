@@ -1,12 +1,18 @@
 [tool.poetry]
 name = "safelink-search-api"
 version = "0.1.0"
-description = "Keyword based search based on text and images of consumer products"
+description = "Keyword based search using text and images of consumer products"
 authors = ["Samuel Kalu <kalusam619@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+openai = "^1.46.1"
+langchain = "^0.3.0"
+langchain-openai = "^0.2.0"
+scikit-learn = "^1.5.2"
+flask = "^3.0.3"
+langchain-community = "^0.3.0"
 
 
 [build-system]
