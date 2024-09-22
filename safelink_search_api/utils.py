@@ -54,11 +54,9 @@ SWAGGER_TEMPLATE = {
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "user_id": {"type": "string"},
                                 "query_text": {"type": "string"}
                             },
                             "example": {
-                                "user_id": "67890",
                                 "query_text": "Sample search query"
                             }
                         }

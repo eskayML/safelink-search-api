@@ -78,8 +78,6 @@ def search_embedding():
     if not query_text:
         return jsonify({"error": "No input text provided"}), 400  # Return 400 for bad request
 
-    if not user_id:
-        return jsonify({"error": "No user_id provided"}), 400  # Ensure user_id is provided
 
     query_vector = generate_embedding(query_text)
     if query_vector is None:
@@ -89,7 +87,6 @@ def search_embedding():
         response = (
             supabase.table('products')
             .select('product_id, product_title, embedding')
-            .eq('user_id', user_id)  # Filter by user_id
             .execute()
         )
 
@@ -106,7 +103,6 @@ def search_embedding():
             similarity = cosine_similarity([query_vector], [stored_embedding])[0][0]
 
             similarities.append({
-                "user_id":user_id,
                 "product_id": product_id,
                 "title": product_title,
                 "similarity": similarity
