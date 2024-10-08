@@ -7,15 +7,32 @@ from dotenv import load_dotenv
 load_dotenv()
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 import os
+from pymongo import MongoClient
 from supabase import create_client, Client
-from utils import extract_text_from_image,SWAGGER_TEMPLATE
-
+from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64
+from bson import json_util
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
+# Create a MongoDB client
+client = MongoClient(os.getenv("MONGODB_URL"))
+
+# Connect to the cream-card database
+db = client['cream-card']
+
+# Fetch everything from the inventories collection
+inventories_collection = db['inventories']
+
+# Retrieve all documents in the inventories collection
+all_inventories = inventories_collection.find()
+
+
+
+
+
 
 # Swagger setup
 SWAGGER_URL = '/docs'
@@ -39,136 +56,91 @@ def generate_embedding(text):
         print(f"Error generating embedding: {str(e)}")
         return None
 
+@app.route('/embed_inventories', methods=['POST'])
+def embed_and_update_inventories():
+    try:
+        # Retrieve all documents in the inventories collection
+        all_inventories = inventories_collection.find()
+        
+        for inventory in all_inventories:
+            product_title = inventory['title']
+            description = inventory['description']
+            cover_image = fetch_and_convert_image_to_base64(inventory['images'][0])
+            
+            embedding_vector = generate_embedding(f"{product_title}, {description} , {cover_image}")
+            
+            if embedding_vector is not None:
+                # Update MongoDB document with embedding
+                inventories_collection.update_one(
+                    {'_id': inventory['_id']},  # Match the document by _id
+                    {'$set': {'embedding': embedding_vector}}  # Set the embedding field
+                )
+        return jsonify({'status': 'success', 'message': 'Embeddings added to all inventories!'}), 200
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# Endpoint to create an embedding from text
-@app.route('/create_embedding', methods=['POST'])
-def create_embedding():
-    data = request.json
-    product_id = data.get('product_id')
-    user_id = data.get("user_id")
-    product_title = data.get('product_title')
-    base64_img = data.get('base64_img')
-    generated_description = extract_text_from_image(base64_img)
 
-    embedding_vector = generate_embedding(f"{product_title}: {generated_description}")
 
-    if embedding_vector is None:
-        return jsonify({"error": "Failed to generate embedding"}), 500
 
-    response = (
-        supabase.table("products")
-        .insert({
-            "user_id": user_id,
-            "product_id": product_id,
-            'product_title': product_title,
-            'embedding': embedding_vector
-        })
-        .execute()
-    )
-
-    return jsonify({"message": "Embedding created successfully"}), 201
 
 
 @app.route('/search', methods=['POST'])
-def search_embedding():
-    data = request.json
-    query_text = data.get('query_text')
-    user_id = data.get('user_id')  # Get user_id from the request
-
-    if not query_text:
-        return jsonify({"error": "No input text provided"}), 400  # Return 400 for bad request
-
-
-    query_vector = generate_embedding(query_text)
-    if query_vector is None:
-        return jsonify({"error": "Failed to generate embedding for query"}), 500
-
+def search():
     try:
-        response = (
-            supabase.table('products')
-            .select('product_id, product_title, embedding')
-            .execute()
-        )
-
-        if response.data is None or len(response.data) == 0:
-            return jsonify({"error": "No embeddings found for the given user_id"}), 404  # Return 404 if no data
-
-        similarities = []
-
-        for record in response.data:
-            product_id = record['product_id']
-            product_title = record['product_title']
-            stored_embedding = np.array(ast.literal_eval(record['embedding']))  # Convert string to numpy array
-
-            similarity = cosine_similarity([query_vector], [stored_embedding])[0][0]
-
-            similarities.append({
-                "product_id": product_id,
-                "title": product_title,
-                "similarity": similarity
-            })
-
-        sorted_similarities = sorted(similarities, key=lambda x: x['similarity'], reverse=True)
-
-        return jsonify({"results": sorted_similarities}), 200
-
+        # Get the search query from the request
+        data = request.json
+        query = data.get('query')
+        
+        if not query:
+            return jsonify({'status': 'error', 'message': 'No query provided'}), 400
+        
+        # Generate an embedding for the query
+        query_embedding = generate_embedding(query)
+        
+        if query_embedding is None:
+            return jsonify({'status': 'error', 'message': 'Error generating embedding'}), 500
+        
+        # Fetch all documents with embeddings from the MongoDB collection
+        all_inventories = inventories_collection.find({'embedding': {'$exists': True}})
+        
+        # Prepare to store the similarity results
+        results = []
+        
+        for inventory in all_inventories:
+            inventory_embedding = inventory.get('embedding')
+            
+            if inventory_embedding:
+                # Calculate cosine similarity between query embedding and inventory embedding
+                similarity = cosine_similarity([query_embedding], [inventory_embedding])[0][0]
+                
+                # Create a copy of the inventory without the embedding
+                inventory_without_embedding = {k: v for k, v in inventory.items() if k != 'embedding'}
+                
+                # Add the cleaned inventory and similarity score to the results list (for sorting purposes)
+                results.append({
+                    'inventory': inventory_without_embedding,  # Store the document without the embedding
+                    'similarity_score': similarity  # Keep the score just for sorting
+                })
+        
+        # Sort results by similarity score in descending order
+        results = sorted(results, key=lambda x: x['similarity_score'], reverse=True)
+        
+        # Extract the sorted inventory documents (without similarity score)
+        sorted_inventories = [result['inventory'] for result in results]
+        
+        # Serialize the results using bson's json_util to handle ObjectId and other MongoDB types
+        return json_util.dumps(sorted_inventories), 200
+    
     except Exception as e:
-        print(f"Error retrieving embeddings: {str(e)}")
-        return jsonify({"error": "Failed to retrieve embeddings"}), 500
+        print(f"Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-
-@app.route('/update_embedding', methods=['PUT'])
-def update_embedding():
-    data = request.json
-    product_id = data.get('product_id')
-    user_id = data.get("user_id")
-    product_title = data.get('product_title')
-    base64_img = data.get('base64_img')
-    generated_description = extract_text_from_image(base64_img)
-    new_embedding_vector = generate_embedding(f"{product_title}: {generated_description}")
-
-    if new_embedding_vector is None:
-        return jsonify({"error": "Failed to generate embedding"}), 500
-
-    try:
-        response = (
-            supabase.table('products')
-            .update({'embedding': new_embedding_vector})
-            .eq('user_id', user_id)
-            .eq('product_id', int(product_id))
-            .execute()
-        )
-
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to update embedding"}), 500
-
-        return jsonify({"message": "Embedding updated successfully", "product_id": int(product_id)}), 200
-
+    
     except Exception as e:
-        print(f"Error updating embedding: {str(e)}")
-        return jsonify({"error": "Failed to update embedding"}), 500
-
-
-@app.route('/delete_embedding', methods=['DELETE'])
-def delete_embedding():
-    data = request.json
-    product_id = data.get('product_id')
-    user_id = data.get("user_id")
-
-    try:
-        response = (
-            supabase.table('products')
-            .delete()
-            .eq('user_id', user_id)
-            .eq('product_id', int(product_id))
-            .execute()
-        )
-
-        return jsonify({"message": "Embedding deleted successfully", "product_id": product_id}), 200
-
-    except Exception as e:
-        print(f"Error deleting embedding: {str(e)}")
-        return jsonify({"error": "Failed to delete embedding"}), 500
+        print(f"Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 if __name__ == '__main__':
