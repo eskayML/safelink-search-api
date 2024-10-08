@@ -63,7 +63,7 @@ SWAGGER_TEMPLATE = {
     "description": "API for searching products in the inventory.",
     "version": "1.0.0"
   },
-  "host": "localhost:5000",  
+  "host": "https://safelink-search-api.onrender.com",  
   "basePath": "/",
   "schemes": [
     "http"
@@ -86,42 +86,143 @@ SWAGGER_TEMPLATE = {
           "200": {
             "description": "A successful response",
             "schema": {
-              "type": "object",
-              "properties": {
-                "status": {
-                  "type": "string",
-                  "example": "success"
-                },
-                "results": {
-                  "type": "array",
-                  "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "_id": {
                     "type": "object",
                     "properties": {
-                      "_id": {
+                      "$oid": {
                         "type": "string",
-                        "example": "64b8f2de9c8b1f0012a4abf3"
-                      },
-                      "title": {
-                        "type": "string",
-                        "example": "Product A"
-                      },
-                      "description": {
-                        "type": "string",
-                        "example": "Description of Product A"
-                      },
-                      "price": {
-                        "type": "number",
-                        "example": 25.99
-                      },
-                      "stock": {
-                        "type": "integer",
-                        "example": 10
+                        "example": "66faf5eab0d7086885949951"
                       }
                     }
+                  },
+                  "title": {
+                    "type": "string",
+                    "example": "Soft ponmo chops dipped in fried pepperstew"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "This ponmo delicacy goes with any type of drinks and can be used for any type of events."
+                  },
+                  "price": {
+                    "type": "number",
+                    "example": 15000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "NGN"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722981/o0enwomd3thy5x71gf6j.jpg"
+                    }
+                  },
+                  "videos": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "owner": {
+                    "type": "object",
+                    "properties": {
+                      "$oid": {
+                        "type": "string",
+                        "example": "66d4cc5d67cf6df5d674517c"
+                      }
+                    }
+                  },
+                  "__v": {
+                    "type": "integer",
+                    "example": 0
                   }
                 }
               }
-            }
+            },
+            "examples": [
+              {
+                "_id": {"$oid": "66faf5eab0d7086885949951"},
+                "title": "Soft ponmo chops dipped in fried pepperstew",
+                "description": "This ponmo delicacy goes with any type of drinks and can be used for any type of events.",
+                "price": 15000,
+                "currency": "NGN",
+                "images": [
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722981/o0enwomd3thy5x71gf6j.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722982/ps9sew3hck5uw0icpeuz.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722982/hngnm7thij4lwev2tryy.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722983/lo2bz2eishsq3as5l2r6.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722984/skci45nbuer3fle4qktc.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722984/amwyuk3avmmzdaguedn0.jpg",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727722985/xwkeyt5kzb5kv50tibcl.jpg"
+                ],
+                "videos": [],
+                "owner": {"$oid": "66d4cc5d67cf6df5d674517c"},
+                "__v": 0
+              },
+              {
+                "_id": {"$oid": "66fab5b7758fc2f694f38507"},
+                "title": "My Product",
+                "description": "Test",
+                "price": 50,
+                "currency": "USD",
+                "images": [
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727706549/tkyi6kehrpbmfmhjrfax.png",
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1727706550/w4e18z3lkxbcjdkk03vv.jpg"
+                ],
+                "videos": [],
+                "owner": {"$oid": "66d372ec6f8432cf6e26163f"},
+                "__v": 0
+              },
+              {
+                "_id": {"$oid": "66cbbf952fd88c69c63eb304"},
+                "title": "clothes",
+                "description": "clothes",
+                "price": 7000,
+                "currency": "NGN",
+                "images": [
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1724628884/CREAM%20CARD%20RESOURCES/aeffm8hdkxebjjymi1wr.jpg"
+                ],
+                "videos": [],
+                "owner": {"$oid": "66ca38fcb5c3e35a4ebe024c"},
+                "__v": 0
+              },
+              {
+                "_id": {"$oid": "66d4d03c67cf6df5d67451a6"},
+                "title": "Brown bag",
+                "description": "Very fine brown bag with camel leather",
+                "price": 5000,
+                "currency": "NGN",
+                "images": [
+                  "https://res.cloudinary.com/dtori4rq2/image/upload/v1725222970/CREAM%20CARD%20RESOURCES/unbw3to2k5wkgksx97uj.jpg"
+                ],
+                "videos": [],
+                "owner": {"$oid": "66d4cc5d67cf6df5d674517c"},
+                "__v": 0
+              },
+              {
+                "_id": {"$oid": "65110ec05746557aead4bac6"},
+                "title": "House",
+                "description": "Dey Play My Fans",
+                "price": 70000,
+                "currency": "NGN",
+                "images": [
+                  "http://res.cloudinary.com/dtori4rq2/image/upload/v1695617077/CREAM%20CARD%20RESOURCES/ubksgczmq9ivsldmgyty.png",
+                  "http://res.cloudinary.com/dtori4rq2/image/upload/v1695617083/CREAM%20CARD%20RESOURCES/f6smgrnblbspla7k4iph.png",
+                  "http://res.cloudinary.com/dtori4rq2/image/upload/v1695617084/CREAM%20CARD%20RESOURCES/dvthckuwmswl7axginev.png",
+                  "http://res.cloudinary.com/dtori4rq2/image/upload/v1695617089/CREAM%20CARD%20RESOURCES/sqeymvrzfsbuaju5brl8.png"
+                ],
+                "videos": [
+                  "http://res.cloudinary.com/dtori4rq2/video/upload/v1695616701/CREAM%20CARD%20RESOURCES/vwge13z4i56zzieimesp.mp4"
+                ],
+                "owner": {"$oid": "65110cb178e2589a9914c094"},
+                "__v": 1
+              }
+            ]
           },
           "400": {
             "description": "Invalid input",
