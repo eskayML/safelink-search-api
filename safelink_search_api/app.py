@@ -90,7 +90,7 @@ def embed_and_update_inventories():
 def search():
     try:
         # Get the search query from the request
-        data = request.json
+        data = request.form
         query = data.get('query')
         
         if not query:
