@@ -11,7 +11,7 @@ from pymongo import MongoClient
 from supabase import create_client, Client
 from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64
 from bson import json_util
-from fastapi.middleware.cors import CORSMiddleware
+from flask_cors import CORS
 
 
 url: str = os.environ.get("SUPABASE_URL")
@@ -19,11 +19,7 @@ key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*']
-)
+app = CORS(app)
 
 # Create a MongoDB client
 client = MongoClient(os.getenv("MONGODB_URL"))
