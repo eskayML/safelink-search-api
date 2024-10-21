@@ -11,12 +11,20 @@ from pymongo import MongoClient
 from supabase import create_client, Client
 from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64
 from bson import json_util
+from fastapi.middleware.cors import CORSMiddleware
+
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*']
+)
+
 # Create a MongoDB client
 client = MongoClient(os.getenv("MONGODB_URL"))
 
@@ -65,9 +73,15 @@ def embed_and_update_inventories():
         for inventory in all_inventories:
             product_title = inventory['title']
             description = inventory['description']
-            cover_image = fetch_and_convert_image_to_base64(inventory['images'][0])
+
+            try:
+                cover_image  = inventory['images'][0] 
+                cover_image_base64 = fetch_and_convert_image_to_base64(cover_image)
+                # print(cover_image_base64)
+            except:
+                print('imade download failed')
             
-            embedding_vector = generate_embedding(f"{product_title}, {description} , {cover_image}")
+            embedding_vector = generate_embedding(f"{product_title}\n {description}\n {cover_image_base64}")
             
             if embedding_vector is not None:
                 # Update MongoDB document with embedding
@@ -80,6 +94,10 @@ def embed_and_update_inventories():
     except Exception as e:
         print(f"Error: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
+
 
 
 

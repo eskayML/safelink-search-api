@@ -42,7 +42,7 @@ def extract_text_from_image(base64_img):
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": base64_img,
+                        "url": f"data:image/jpeg;base64,{base64_img}",
                         "detail": "low",
                     },
                 },
