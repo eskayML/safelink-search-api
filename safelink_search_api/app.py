@@ -19,7 +19,7 @@ key: str = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 app = Flask(__name__)
-app = CORS(app)
+CORS(app)
 
 # Create a MongoDB client
 client = MongoClient(os.getenv("MONGODB_URL"))
