@@ -70,14 +70,14 @@ def embed_and_update_inventories():
             product_title = inventory['title']
             description = inventory['description']
 
-            try:
-                cover_image  = inventory['images'][0] 
-                cover_image_base64 = fetch_and_convert_image_to_base64(cover_image)
-                # print(cover_image_base64)
-            except:
-                print('imade download failed')
+            # try:
+            #     cover_image  = inventory['images'][0] 
+            #     cover_image_base64 = fetch_and_convert_image_to_base64(cover_image)
+            #     # print(cover_image_base64)
+            # except:
+            #     print('imade download failed')
             
-            embedding_vector = generate_embedding(f"{product_title}\n {description}\n {cover_image_base64}")
+            embedding_vector = generate_embedding(f"{product_title}\n {description}")
             
             if embedding_vector is not None:
                 # Update MongoDB document with embedding

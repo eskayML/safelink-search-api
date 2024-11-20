@@ -38,7 +38,7 @@ def extract_text_from_image(base64_img):
         msg = chat.invoke([
             AIMessage(content="You are an expert at identifying objects in an image and giving very accurate descriptions."),
             HumanMessage(content=[
-                {"type": "text", "text": "Briefly tell me what is in  the image"},
+                {"type": "text", "text": "Summarize the characteristics of the image"},
                 {
                     "type": "image_url",
                     "image_url": {
