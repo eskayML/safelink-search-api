@@ -5,11 +5,11 @@ from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 load_dotenv()
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
 import os
 from pymongo import MongoClient
 from supabase import create_client, Client
-from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64
+from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64,generate_embedding
 from bson import json_util
 from flask_cors import CORS
 
@@ -35,9 +35,6 @@ all_inventories = inventories_collection.find()
 
 
 
-
-
-
 # Swagger setup
 SWAGGER_URL = '/docs'
 API_URL = '/static/swagger.json'
@@ -48,50 +45,6 @@ app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 @app.route("/static/swagger.json")
 def swagger_spec():
     return jsonify(SWAGGER_TEMPLATE)
-
-# Add your existing endpoints below:
-embedding_model = OpenAIEmbeddings(model='text-embedding-3-small')
-
-
-def generate_embedding(text):
-    try:
-        return embedding_model.embed_query(text)
-    except Exception as e:
-        print(f"Error generating embedding: {str(e)}")
-        return None
-
-@app.route('/embed_inventories', methods=['POST'])
-def embed_and_update_inventories():
-    try:
-        # Retrieve all documents in the inventories collection
-        all_inventories = inventories_collection.find()
-        
-        for inventory in all_inventories:
-            product_title = inventory['title']
-            description = inventory['description']
-
-            # try:
-            #     cover_image  = inventory['images'][0] 
-            #     cover_image_base64 = fetch_and_convert_image_to_base64(cover_image)
-            #     # print(cover_image_base64)
-            # except:
-            #     print('imade download failed')
-            
-            embedding_vector = generate_embedding(f"{product_title}\n {description}")
-            
-            if embedding_vector is not None:
-                # Update MongoDB document with embedding
-                inventories_collection.update_one(
-                    {'_id': inventory['_id']},  # Match the document by _id
-                    {'$set': {'embedding': embedding_vector}}  # Set the embedding field
-                )
-        return jsonify({'status': 'success', 'message': 'Embeddings added to all inventories!'}), 200
-    
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
 
 
 
@@ -139,7 +92,7 @@ def search():
                 })
         
         # Sort results by similarity score in descending order
-        results = sorted(results, key=lambda x: x['similarity_score'], reverse=True)
+        results = sorted(results, key=lambda x: x['similarity_score'], reverse=True)[:5]
         
         # Extract the sorted inventory documents (without similarity score)
         sorted_inventories = [result['inventory'] for result in results]

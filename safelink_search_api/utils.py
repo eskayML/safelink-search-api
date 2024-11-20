@@ -1,13 +1,28 @@
 from langchain.schema import HumanMessage, AIMessage
-from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from dotenv import load_dotenv
+import requests
+import base64,os
+
+from pymongo import MongoClient
+
 load_dotenv()
 
+
+client = MongoClient(os.getenv("MONGODB_URL"))
+
+# Connect to the cream-card database
+db = client['cream-card']
+
 chat = ChatOpenAI(model="gpt-4o-mini")
+# Fetch everything from the inventories collection
+inventories_collection = db['inventories']
+
+# Retrieve all documents in the inventories collection
+all_inventories = inventories_collection.find()
 
 
-import requests
-import base64
+
 
 def fetch_and_convert_image_to_base64(cloudinary_url):
     try:
@@ -53,6 +68,110 @@ def extract_text_from_image(base64_img):
     except Exception as e:
         print(f"Error extracting text from image: {str(e)}")
         return ""
+
+
+# Add your existing endpoints below:
+embedding_model = OpenAIEmbeddings(model='text-embedding-3-small')
+
+
+def generate_embedding(text):
+    try:
+        return embedding_model.embed_query(text)
+    except Exception as e:
+        print(f"Error generating embedding: {str(e)}")
+        return None
+
+
+def embed_and_update_inventories():
+    try:
+        # Retrieve all documents in the inventories collection
+        all_inventories = inventories_collection.find()
+        
+        for inventory in all_inventories:
+            product_title = inventory['title']
+            description = inventory['description']
+
+            # try:
+            #     cover_image  = inventory['images'][0] 
+            #     cover_image_base64 = fetch_and_convert_image_to_base64(cover_image)
+            #     # print(cover_image_base64)
+            # except:
+            #     print('imade download failed')
+            
+            embedding_vector = generate_embedding(f"{product_title}\n {description}")
+            
+            if embedding_vector is not None:
+                # Update MongoDB document with embedding
+                inventories_collection.update_one(
+                    {'_id': inventory['_id']},  # Match the document by _id
+                    {'$set': {'embedding': embedding_vector}}  # Set the embedding field
+                )
+        return {'status': 'success', 'message': 'Embeddings added to all inventories!'}
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
