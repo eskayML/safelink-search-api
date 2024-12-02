@@ -5,13 +5,17 @@ from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 load_dotenv()
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 import os
 from pymongo import MongoClient
 from supabase import create_client, Client
 from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64,generate_embedding
 from bson import json_util
 from flask_cors import CORS
+from langchain_core.tools import tool
+from bson.objectid import ObjectId
+
+
 
 
 url: str = os.environ.get("SUPABASE_URL")
@@ -41,6 +45,7 @@ API_URL = '/static/swagger.json'
 swaggerui_blueprint = get_swaggerui_blueprint(SWAGGER_URL, API_URL, config={'app_name': "Embedding API"})
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
+
 # Swagger JSON Specification
 @app.route("/static/swagger.json")
 def swagger_spec():
@@ -49,6 +54,27 @@ def swagger_spec():
 
 
 
+
+@tool
+def is_inventory(query:str) -> str:
+    """
+    checks if the input string is trying to ask for a product or inventory
+    """
+    return "inventory"
+
+
+@tool
+def is_vendor(query:str) -> str:
+    """
+    checks if the input string is trying to ask for a vendor
+    """
+    return "vendor"
+
+
+
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125")
+tools = [is_inventory,is_vendor]
+llm_with_tools = llm.bind_tools(tools, tool_choice = 'any')
 
 
 
@@ -59,6 +85,9 @@ def search():
         # Get the search query from the request
         data = request.form
         query = data.get('query')
+
+        query_target = llm_with_tools.invoke(query).tool_calls[0]['name']
+        print(query_target)
         
         if not query:
             return jsonify({'status': 'error', 'message': 'No query provided'}), 400
@@ -110,5 +139,56 @@ def search():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+
+@app.route('/add_inventory_to_ai', methods=['POST'])
+def add_inventory_to_ai():
+    """
+    Generate an embedding for a specific inventory item and update the MongoDB document.
+    """
+    
+    try:
+        # Parse JSON payload
+        data = request.form
+
+        if not data or 'inventory_id' not in data:
+            return jsonify({'status': 'error', 'message': 'Missing inventory_id in the request body'}), 400
+
+        inventory_id = data['inventory_id']
+
+        # Validate the inventory ID format
+        if not ObjectId.is_valid(inventory_id):
+            return jsonify({'status': 'error', 'message': 'Invalid inventory ID'}), 400
+
+        # Retrieve the inventory item from the database
+        inventory = inventories_collection.find_one({'_id': ObjectId(inventory_id)})
+
+        if not inventory:
+            return jsonify({'status': 'error', 'message': 'Inventory item not found'}), 404
+
+        # Combine relevant fields to create a text representation for embedding
+        inventory_text = ' '.join(str(value) for key, value in inventory.items() if key != '_id' and key != 'embedding')
+
+        # Generate the embedding
+        embedding = generate_embedding(inventory_text)
+
+        if embedding is None:
+            return jsonify({'status': 'error', 'message': 'Error generating embedding'}), 500
+
+        # Update the inventory document with the new embedding
+        inventories_collection.update_one(
+            {'_id': ObjectId(inventory_id)},
+            {'$set': {'embedding': embedding}}
+        )
+
+        return jsonify({'status': 'success', 'message': 'Inventory embedding added to search endpoint successfully'}), 200
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port = 5000,debug=True)
+
+

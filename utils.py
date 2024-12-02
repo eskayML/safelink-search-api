@@ -1,9 +1,10 @@
-from langchain.schema import HumanMessage, AIMessage
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from dotenv import load_dotenv
-import requests
-import base64,os
+import base64
+import os
 
+import requests
+from dotenv import load_dotenv
+from langchain.schema import AIMessage, HumanMessage
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pymongo import MongoClient
 
 load_dotenv()
@@ -80,7 +81,7 @@ def generate_embedding(text):
     except Exception as e:
         print(f"Error generating embedding: {str(e)}")
         return None
-
+    
 
 def embed_and_update_inventories():
     try:
@@ -178,16 +179,83 @@ def embed_and_update_inventories():
 SWAGGER_TEMPLATE = {
   "swagger": "2.0",
   "info": {
-    "title": "Search API",
+    "title": "Safelink Search API",
     "description": "API for searching products in the inventory.",
     "version": "1.0.0"
   },
-  "host": "https://safelink-search-api.onrender.com",  
+  "host": "https://safelink.up.railway.app",  
   "basePath": "/",
   "schemes": [
     "http"
   ],
   "paths": {
+      "/add_inventory_to_ai": {
+            "post": {
+                "operationId": "add_inventory_to_ai",
+                "summary": "Generate embedding for an inventory item",
+                "description": "This endpoint generates an embedding for a specific inventory item based on its ID and updates the database.",
+                "parameters": [
+                    {
+                        "name": "body",
+                        "in": "body",
+                        "required": True,
+                        "description": "JSON object containing the inventory_id of the item to process.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "inventory_id": {
+                                    "type": "string",
+                                    "description": "The ObjectId of the inventory item."
+                                }
+                            },
+                            "required": ["inventory_id"]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Embedding successfully generated and updated.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "message": {"type": "string"}
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or missing data.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "message": {"type": "string"}
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Inventory item not found.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "message": {"type": "string"}
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error.",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "message": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            }
+        },
     "/search": {
       "post": {
         "summary": "Search for products",

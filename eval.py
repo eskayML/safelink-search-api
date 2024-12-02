@@ -22,19 +22,19 @@ users_collection = db['users']
 subscriptions_collection = db['subscriptionplans']
 
 
-for item in users_collection.find():
-    print(item.address)
+# for item in users_collection.find():
+#     print(item.address)
 
 
-# # Retrieve all documents in the inventories collection
-# all_inventories = inventories_collection.find({}, {'embedding': 0,'datetime':1})
+# Retrieve all documents in the inventories collection
+all_inventories = inventories_collection.find({}, {'embedding': 0})
 
-# count = 0
-# for item in all_inventories:
-#     print(item)
+count = 0
+for item in all_inventories:
+    print(item)
 
-#     count+=1
+    count+=1
 
-# print('total inventories:',count)
+print('total inventories:',count)
 
 
