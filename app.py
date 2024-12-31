@@ -9,12 +9,12 @@ from langchain_openai import ChatOpenAI
 import os
 from pymongo import MongoClient
 from supabase import create_client, Client
-from utils import extract_text_from_image,SWAGGER_TEMPLATE,fetch_and_convert_image_to_base64,generate_embedding
+from utils import extract_text_from_image,fetch_and_convert_image_to_base64,generate_embedding
 from bson import json_util
 from flask_cors import CORS
 from langchain_core.tools import tool
 from bson.objectid import ObjectId
-
+from docs import SWAGGER_TEMPLATE
 
 
 
@@ -33,6 +33,8 @@ db = client['cream-card']
 
 # Fetch everything from the inventories collection
 inventories_collection = db['inventories']
+users_collection = db['users']
+
 
 # Retrieve all documents in the inventories collection
 all_inventories = inventories_collection.find()
@@ -139,13 +141,12 @@ def search():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-
 @app.route('/add_inventory_to_ai', methods=['POST'])
 def add_inventory_to_ai():
     """
-    Generate an embedding for a specific inventory item and update the MongoDB document.
+    Generate an embedding for a specific inventory item, update the MongoDB document,
+    and add the owner's profile picture (or an empty string if not available).
     """
-    
     try:
         # Parse JSON payload
         data = request.form
@@ -166,7 +167,7 @@ def add_inventory_to_ai():
             return jsonify({'status': 'error', 'message': 'Inventory item not found'}), 404
 
         # Combine relevant fields to create a text representation for embedding
-        inventory_text = ' '.join(str(value) for key, value in inventory.items() if key != '_id' and key != 'embedding')
+        inventory_text = ' '.join(str(value) for key, value in inventory.items() if key in ['title', 'description', 'price', 'currency'])
 
         # Generate the embedding
         embedding = generate_embedding(inventory_text)
@@ -174,13 +175,77 @@ def add_inventory_to_ai():
         if embedding is None:
             return jsonify({'status': 'error', 'message': 'Error generating embedding'}), 500
 
-        # Update the inventory document with the new embedding
+        # Retrieve the owner's profile picture
+        owner_id = inventory.get('owner')
+        owner_profile_picture = ""
+
+        if owner_id and ObjectId.is_valid(owner_id):
+            owner = users_collection.find_one({'_id': ObjectId(owner_id)})
+            if owner:
+                owner_profile_picture = owner.get('profilePicture', "")
+
+        # Update the inventory document with the new embedding and owner_profilePicture
+        update_data = {
+            'owner_profilePicture': owner_profile_picture,
+            'embedding': embedding,
+        }
+
         inventories_collection.update_one(
             {'_id': ObjectId(inventory_id)},
-            {'$set': {'embedding': embedding}}
+            {'$set': update_data}
         )
 
-        return jsonify({'status': 'success', 'message': 'Inventory embedding added to search endpoint successfully'}), 200
+        return jsonify({'status': 'success', 'message': 'Inventory embedding and owner profile picture updated successfully'}), 200
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
+@app.route('/full_batch_embedding', methods=['POST'])
+def add_embeddings_to_all_inventories():
+    """
+    Generate embeddings for all inventory items and update their MongoDB documents.
+    """
+
+    try:
+        # Retrieve all inventory items from the database
+        inventories = inventories_collection.find()
+
+        updated_count = 0
+        error_count = 0
+
+        for inventory in inventories:
+            try:
+                # Combine relevant fields to create a text representation for embedding
+                inventory_text = ' '.join(
+                    str(value) for key, value in inventory.items() if key != '_id' and key != 'embedding'
+                )
+
+                # Generate the embedding
+                embedding = generate_embedding(inventory_text)
+
+                if embedding is not None:
+                    # Update the inventory document with the new embedding
+                    inventories_collection.update_one(
+                        {'_id': inventory['_id']},
+                        {'$set': {'embedding': embedding}}
+                    )
+                    updated_count += 1
+                else:
+                    error_count += 1
+
+            except Exception as inner_exception:
+                print(f"Error processing inventory with ID {inventory['_id']}: {str(inner_exception)}")
+                error_count += 1
+
+        return jsonify({
+            'status': 'success',
+            'message': f"Processed {updated_count + error_count} inventories.",
+            'updated': updated_count,
+            'errors': error_count
+        }), 200
 
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -189,6 +254,6 @@ def add_inventory_to_ai():
 
 
 if __name__ == '__main__':
-    app.run(port = 5000,debug=True)
+    app.run(port=os.getenv("PORT", default=5000),debug=True)
 
 

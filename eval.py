@@ -28,7 +28,7 @@ subscriptions_collection = db['subscriptionplans']
 
 # Retrieve all documents in the inventories collection
 all_inventories = inventories_collection.find({}, {'embedding': 0})
-
+# all_inventories = users_collection.find()
 count = 0
 for item in all_inventories:
     print(item)
